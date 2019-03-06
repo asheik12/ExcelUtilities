@@ -1,0 +1,8 @@
+NShiftI,06:00:00,07:30:00,14:00:00,18:00:00,22:00:00,
+NShiftO,14:00:00,15:30:00,22:00:00,02:00:00,06:00:00,
+RShiftI,
+RShiftO,
+LColumns,Date,Employee Id,Employee Name,Department,Shift In,Shift Out,Actual Time In,Actual Time Out,
+AColumns,Date,Code,Name,Section,Shift_In,Shift_Out,Time_In,Time_Out,
+PColumns,Shift In,Shift Out,Actual Time In,Actual Time Out,
+ECodes,121,1939,
