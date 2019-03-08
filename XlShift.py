@@ -1,4 +1,5 @@
 import os
+import shutil
 import pandas as p
 import datetime
 
@@ -37,20 +38,21 @@ def readRequire(sFile, cFile=None, oMon='Normal'):
                     ibet = data.query(f"(Diff_In > '01:00:00' and Diff_In <= '06:00:00') and {acol[4]} in {sfil}")
                     data.drop(ibet.index, inplace=True)
                     data.sort_values([acol[1], acol[0]], inplace=True)
-                    data[acol[0]] = data[acol[0]].dt.date
-                    data[acol[4]] = data[acol[4]].dt.time
+                    data[acol[0]] = data[acol[0]].dt.date               # Converts to date
+                    data[acol[4]] = data[acol[4]].dt.time               # Converts to time
                     data[acol[5]] = data[acol[5]].dt.time
                     data[acol[6]] = data[acol[6]].dt.time
                     data[acol[7]] = data[acol[7]].dt.time
-                    sec = list(data[acol[3]].drop_duplicates())
+                    sec = list(data[acol[3]].drop_duplicates())         # remove duplicates from the list
                     rdFile = rFile + "\\Shift Changes " + str(data[acol[0]].min().day) + " to " + str(data[acol[0]].max().day)
-                    if not os.path.exists(rdFile): os.mkdir(rdFile)
-                    for i in sec:
-                        senFile = rdFile+"\\"+i+".xlsx"
-                        exportData(data.query(f"{acol[3]} == '{i}'"), senFile, acol)
+                    typ = getExportType(res[-2], sec)
+                    if os.path.exists(rdFile): shutil.rmtree(rdFile)
+                    os.mkdir(rdFile)
+                    exportData(data, rdFile, acol ,sec ,res[-2] , typ)
                     #['Date'0, 'Code'1, 'Name'2, 'Section'3, 'Shift_In'4, 'Shift_Out'5, 'Time_In'6, 'Time_Out'7]
                     print(data.shape)
                 except Exception as e:
+                    print(e)
                     return errf
             elif oMon == 'Ramadan':
                 shifti = res[2]
@@ -61,9 +63,9 @@ def readRequire(sFile, cFile=None, oMon='Normal'):
         return errs             # Error thrown by source file
 
 
-
+# Reading the requirements from the file *.csv
 def preRead(paths):
-    vlist = ['NShiftI', 'NShiftO', 'RShiftI', 'RShiftO', 'LColumns', 'AColumns', 'PColumns', 'ECodes']
+    vlist = ['NShiftI', 'NShiftO', 'RShiftI', 'RShiftO', 'LColumns', 'AColumns', 'PColumns', 'ECodes', 'CSection']
     if os.path.exists(paths):
         l = list()
         h = list()
@@ -82,13 +84,61 @@ def preRead(paths):
     else:
         return None
 
-def exportData(data, fName, cols):
-    wri = p.ExcelWriter(fName)
-    data.to_excel(wri, sheet_name="Shift_Difference", columns = cols,index=False)
-    wri.sheets['Shift_Difference'].column_dimensions['A'].width = 12
-    wri.sheets['Shift_Difference'].column_dimensions['C'].width = 25
-    wri.sheets['Shift_Difference'].column_dimensions['D'].width = 20
-    #wri.sheets['Shift_Difference'].
-    wri.save()
+# Export to excel
+def exportData(data, fName, cols, sec, res, typ):
+    if typ:
+        a = getAsDict(res)
+        for i,v in a.items():
+            fitm = [ct for ct in sec if ct in v]
+            if len(fitm) != 0:
+                wri = p.ExcelWriter(fName + "\\" + i + ".xlsx")
+                for j in fitm:
+                    edata = data.query(f"{cols[3]} == '{j}'")
+                    edata.to_excel(wri, sheet_name=j, columns=cols, index=False)
+                    wri.sheets[j].column_dimensions['A'].width = 11
+                    wri.sheets[j].column_dimensions['C'].width = len(max(list(edata[cols[2]]), key = len))
+                    wri.sheets[j].column_dimensions['D'].width = len(j)
+                wri.save()
+    else:
+        for i in sec:
+            wri = p.ExcelWriter(fName+"\\"+i+".xlsx")
+            edata = data.query(f"{cols[3]} == '{i}'")
+            edata.to_excel(wri, sheet_name=i, columns=cols, index=False)
+            wri.sheets[i].column_dimensions['A'].width = 11
+            wri.sheets[i].column_dimensions['C'].width = len(max(list(edata[cols[2]]), key = len))
+            wri.sheets[i].column_dimensions['D'].width = len(i)
+            wri.save()
 
-readRequire("C:\\Users\\Sheik\\Desktop\\Test.xlsx", oMon='Normal')
+
+#  method to determine the export type
+def getExportType(filedata, dropdata):
+    a = getAsDict(filedata)
+    l = dictvaluesList(a)
+    ls = [x for x in dropdata if x in l]
+    if ls == dropdata:return True
+    else: return False
+
+# method to convert read data as dictionary
+def getAsDict(filedata):
+    dct = dict()
+    for i in filedata:
+        a = i.split("-")
+        dct[a[0]] = a[1].split(";")
+    return dct
+
+# method to return dict keys
+def dictheadersList(dta):
+    return [k for k in dta.keys()]
+
+# method to return values from dict by splitting
+def dictvaluesList(dta):
+    lst = list()
+    for i in [v for v in dta.values()]:
+        for j in i:
+            lst.append(j)
+    return lst
+
+t1 = datetime.datetime.now()
+print(readRequire("C:\\Users\\Sheik\\Desktop\\Test.xlsx", oMon='Normal'))
+t2 = datetime.datetime.now()
+print(t2-t1)
