@@ -1,7 +1,5 @@
 from os import environ, listdir
 from os.path import join, exists, basename
-
-from Tools.scripts.gprof2html import header
 from pandas import read_excel, DataFrame
 from datetime import datetime as dt
 
@@ -23,7 +21,7 @@ class Summary:
                 self.codsec = read_excel(self.setPath, header=None)
                 self.setdata = read_excel(self.setPath, header=None, sheet_name=1)
             except Exception as e:
-                return f"Error Opening File - {basename(self.setPath)}"
+                return f"Error Opening File - {basename(self.setPath)} \n {e}"
             try:
                 self.earnings = list(self.setdata[0].dropna())
                 self.deductions = list(self.setdata[1].dropna())
@@ -46,7 +44,7 @@ class Summary:
                 self.gtotal = self.extcols[7]
                 return True
             except Exception as e:
-                return f"Missing some datas from {basename(self.setPath)} file"
+                return f"Missing some datas from {basename(self.setPath)} file \n {e}"
         else:
             return f"Cannot find file {basename(self.setPath)} in the path"
 
@@ -63,7 +61,7 @@ class Summary:
                             self.dFrame = self.dFrame.append(df, ignore_index=True)
                 return True
             except Exception as e:
-                return f"Error reading files from {self.dirPath}"
+                return f"Error reading files from {self.dirPath} \n {e}"
         else:
             return f"Path {self.dirPath} not exists"
 
@@ -75,7 +73,7 @@ class Summary:
             self.dFrame.fillna(0, inplace=True)
             return True
         except Exception as e:
-            return "Error while rearraning & indexing the dataframe"
+            return "Error while rearraning & indexing the dataframe \n {e}"
 
     def combinerows(self):
         try:
@@ -97,7 +95,7 @@ class Summary:
                         self.dFrame.rename(index={consrow: rowname}, inplace=True)
             return True
         except Exception as e:
-            return "Error while combining rows in the dataframe"
+            return "Error while combining rows in the dataframe \n {e}"
 
     def combinecols(self):
         try:
@@ -121,7 +119,7 @@ class Summary:
                                     self.deductions.remove(j)
             return True
         except Exception as e:
-            return "Error while combining columns in the dataframe"
+            return "Error while combining columns in the dataframe \n {e}"
 
     def doArithmeticOperations(self):
         try:
@@ -138,7 +136,7 @@ class Summary:
             self.dFrame[self.totded] = self.dFrame[self.totded].mul(-1)
             return True
         except Exception as e:
-            return "Error while performing arithmetic operations in the dataframe"
+            return "Error while performing arithmetic operations in the dataframe \n {e}"
 
 
     def exportWithTotals(self):
@@ -151,7 +149,7 @@ class Summary:
             self.exportToFile(totalFrame)
             return True
         except Exception as e:
-            return "Error while exporting datas to file"
+            return "Error while exporting datas to file \n {e}"
 
     def exportWithoutTotals(self):
         self.exportToFile(self.dFrame)
@@ -161,24 +159,14 @@ class Summary:
             dataframe.to_excel(join(self.dirPath, "Summary.xlsx"))
             return True
         except Exception as e:
-            return "Error while exporting datas to file"
+            return "Error while exporting datas to file \n {e}"
 
-    def getSettings(self, dirPath, setPath):
+    def setSettings(self, dirPath, setPath):
         self.dirPath = dirPath
         self.setPath = setPath
 
     def getDefaultPath(self):
         return join(environ['USERPROFILE'], "Desktop")
 
-
-
-sum = Summary()
-print(sum.loadSettings())
-print(sum.readAllFiles())
-print(sum.indexDataframe())
-print(sum.combinerows())
-print(sum.combinecols())
-print(sum.doArithmeticOperations())
-print(sum.exportWithTotals())
 
 
