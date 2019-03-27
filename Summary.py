@@ -15,6 +15,45 @@ class Summary:
         else:
             self.setPath = setPath
 
+    def calculateSummary(self, totals=True):
+        ldSet = self.loadSettings()
+        if type(ldSet) is bool:
+            rfls = self.readAllFiles()
+            if type(rfls) is bool:
+                idf = self.indexDataframe()
+                if type(idf) is bool:
+                    crow = self.combinerows()
+                    if type(crow) is bool:
+                        ccol = self.combinecols()
+                        if type(ccol) is bool:
+                            aop = self.doArithmeticOperations()
+                            if type(aop) is bool:
+                                if totals:
+                                    exp = self.exportWithTotals()
+                                    if type(exp) is bool:
+                                        return True
+                                    else:
+                                        return exp
+                                else:
+                                    exp = self.exportWithoutTotals()
+                                    if type(exp) is bool:
+                                        return True
+                                    else:
+                                        return exp
+                            else:
+                                return aop
+                        else:
+                            return ccol
+                    else:
+                        return crow
+                else:
+                    return idf
+            else:
+                return rfls
+        else:
+            return ldSet
+
+
     def loadSettings(self):
         if exists(self.setPath):
             try:
@@ -73,7 +112,7 @@ class Summary:
             self.dFrame.fillna(0, inplace=True)
             return True
         except Exception as e:
-            return "Error while rearraning & indexing the dataframe \n {e}"
+            return f"Error while rearraning & indexing the dataframe \n {e}"
 
     def combinerows(self):
         try:
@@ -95,7 +134,7 @@ class Summary:
                         self.dFrame.rename(index={consrow: rowname}, inplace=True)
             return True
         except Exception as e:
-            return "Error while combining rows in the dataframe \n {e}"
+            return f"Error while combining rows in the dataframe \n {e}"
 
     def combinecols(self):
         try:
@@ -119,7 +158,7 @@ class Summary:
                                     self.deductions.remove(j)
             return True
         except Exception as e:
-            return "Error while combining columns in the dataframe \n {e}"
+            return f"Error while combining columns in the dataframe \n {e}"
 
     def doArithmeticOperations(self):
         try:
@@ -136,7 +175,7 @@ class Summary:
             self.dFrame[self.totded] = self.dFrame[self.totded].mul(-1)
             return True
         except Exception as e:
-            return "Error while performing arithmetic operations in the dataframe \n {e}"
+            return f"Error while performing arithmetic operations in the dataframe \n {e}"
 
 
     def exportWithTotals(self):
@@ -146,20 +185,26 @@ class Summary:
             totalFrame.loc[self.admin] = totalFrame.loc[:self.sumrows[0]].sum()
             totalFrame.loc[self.works] = totalFrame.iloc[totalFrame.index.get_loc(self.sumrows[0]) + 1:ilen].sum()
             totalFrame.loc[self.gtotal] = totalFrame.iloc[:ilen].sum()
+            totalFrame.replace(0.0, "", inplace=True)
             self.exportToFile(totalFrame)
             return True
         except Exception as e:
-            return "Error while exporting datas to file \n {e}"
+            return f"Error while exporting datas to file \n {e}"
 
     def exportWithoutTotals(self):
-        self.exportToFile(self.dFrame)
+        try:
+            self.dFrame.replace(0.0, "", inplace=True)
+            self.exportToFile(self.dFrame)
+            return True
+        except Exception as e:
+            return f"Error while exporting datas to file \n {e}"
 
     def exportToFile(self, dataframe):
         try:
             dataframe.to_excel(join(self.dirPath, "Summary.xlsx"))
             return True
         except Exception as e:
-            return "Error while exporting datas to file \n {e}"
+            return f"Error while exporting datas to file \n {e}"
 
     def setSettings(self, dirPath, setPath):
         self.dirPath = dirPath
@@ -167,6 +212,3 @@ class Summary:
 
     def getDefaultPath(self):
         return join(environ['USERPROFILE'], "Desktop")
-
-
-

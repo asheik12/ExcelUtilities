@@ -30,7 +30,7 @@ def readRequire(sFile, cFile=None, oMon='Normal'):
                     data['SDiff'] = data[acol[6]] - data[acol[7]]               # Deriving SDiff
                     shftto = (datetime.datetime.strptime(shifto[1], "%H:%M:%S") + datetime.timedelta(hours=1)).time()
                     data.query(f"({acol[4]} != '{shifti[1]}' or {acol[5]} != '{shftto}') and (Code not in {ecod})", inplace = True)
-                    ind = data.query(f"((Diff_In > '-01:00:00') and (Diff_In < '01:00:00')) and ({acol[4]} in {shifti} and {acol[5]} in {shifto})")
+                    ind = data.query(f"((Diff_In >= '-01:00:00') and (Diff_In <= '01:00:00')) and ({acol[4]} in {shifti} and {acol[5]} in {shifto})")
                     data.drop(ind.index, inplace=True)
                     sam = data.query("SDiff > '-01:00:00' and SDiff < '01:00:00'")
                     data.drop(sam.index, inplace=True)
@@ -139,6 +139,6 @@ def dictvaluesList(dta):
     return lst
 
 t1 = datetime.datetime.now()
-print(readRequire("C:\\Users\\Sheik\\Desktop\\Test.xlsx", oMon='Normal'))
+print(readRequire("C:\\Users\\m.azad\\Desktop\\export.xlsx", oMon='Normal'))
 t2 = datetime.datetime.now()
 print(t2-t1)

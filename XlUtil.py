@@ -3,7 +3,6 @@ from openpyxl import load_workbook
 
 # function to read excel file and to return as list of dictionary
 # arguments passed fName as String & headers as boolean
-
 ## If the headers is True considers the first record as header
 ## If the headers is False creates the own header by default
 
@@ -47,3 +46,11 @@ def retAsList(fName, headers):
         return result
     else:
         return None
+
+
+## Function to return list of dictionary by passing arguments to perform Filter & Sort datas
+# lstData is list of dictionary for ex: [{},{},{}....]
+# filter & sort
+
+def iefsData(lstData, fil, sor):
+    pass
