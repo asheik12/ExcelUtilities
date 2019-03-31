@@ -1,6 +1,6 @@
 from ConnUtilities import ConUtil
 from os.path import join, dirname, exists, isdir
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pymssql import connect
 from pandas import DataFrame
 
@@ -99,7 +99,8 @@ class DataFetch:
 
     def updateQuery(self,start,end,query):
         start = f"'{start.day}/{start.month}/{start.year}'"
-        end = f"'{end.day+2}/{end.month}/{end.year}'"
+        end = end + timedelta(days=2)
+        end = f"'{end.day}/{end.month}/{end.year}'"
         query = query.replace("''", start, 1)
         query = query.replace("''", end, 1)
         return query
@@ -178,3 +179,9 @@ class DataFetch:
             self.conn.close()
 
 
+#dataFetch = DataFetch()
+#result = dataFetch.exportAllDB(date(2019,3,28), date(2019,3,30))
+#if type(result) is bool:
+#    print("Sucessfully Exported")
+#else:
+#    print(result)
