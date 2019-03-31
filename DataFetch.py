@@ -20,7 +20,8 @@ class DataFetch:
         self.qstatus = self.loadQueries()
 
     def fetchAllDB(self, start, end, qType='A'):
-        fetResult = self.preFetch(start, end, qType)
+        self.qType = qType
+        fetResult = self.preFetch(start, end)
         if type(fetResult) is bool:
             conmsg = self.connectToDatabase()
             if type(conmsg) is bool:
@@ -37,10 +38,10 @@ class DataFetch:
             return fetResult
 
 
-    def preFetch(self,start,end,qType):
+    def preFetch(self, start, end):
         if (type(self.status) is bool) & (type(self.qstatus) is bool):
             if (type(start) is date) & (type(end) is date):
-                self.squery = self.getEventQuery(qType)
+                self.squery = self.getEventQuery(self.qType)
                 self.squery = self.updateQuery(start, end, self.squery)
                 if type(self.squery) is str:
                     return True
@@ -56,6 +57,7 @@ class DataFetch:
 
 
     def exportAllDB(self, start, end, qType='A', expPath=None):
+        self.qType = qType
         if expPath == None:
             expPath = dirname(self.dFilePath)
         elif exists(expPath):
@@ -63,7 +65,7 @@ class DataFetch:
                 expPath = dirname(expPath)
         else:
             expPath = dirname(self.dFilePath)
-        fetResult = self.preFetch(start, end, qType)
+        fetResult = self.preFetch(start, end)
         if type(fetResult) is bool:
             conmsg = self.connectToDatabase(cType=False)
             if type(conmsg) is bool:
@@ -97,7 +99,7 @@ class DataFetch:
 
     def updateQuery(self,start,end,query):
         start = f"'{start.day}/{start.month}/{start.year}'"
-        end = f"'{end.day}/{end.month}/{end.year}'"
+        end = f"'{end.day+2}/{end.month}/{end.year}'"
         query = query.replace("''", start, 1)
         query = query.replace("''", end, 1)
         return query
@@ -174,4 +176,5 @@ class DataFetch:
             self.cur.close()
         if self.conn != None:
             self.conn.close()
+
 

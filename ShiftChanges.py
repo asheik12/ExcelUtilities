@@ -1,5 +1,6 @@
 import shutil
 from ConnUtilities import ConUtil
+from SpicaEvents import SpicaEvents
 from os.path import exists, isfile, join, dirname
 from os import mkdir
 from pandas import read_excel, DataFrame, merge, to_datetime, ExcelWriter
@@ -25,15 +26,36 @@ class ShiftChanges:
             self.sorFile = sorFile
         self.fStatus = self.loadProperties()
 
-    def findShiftChanges(self, type='N'):
+    def findShiftChanges(self, types='N'):
         if type(self.fStatus) is bool:
-            if type == 'N':
+            if types == 'N':
                 nShiftOp = self.performNormalShiftOperation()
                 if type(nShiftOp) is DataFrame:
-                    pass
+                    spicaEvents = SpicaEvents()
+                    self.spicaEve = spicaEvents.spicaPunchings(nShiftOp[self.aCol[0]].min().date(), nShiftOp[self.aCol[0]].max().date())
+                    if type(self.spicaEve) is DataFrame:
+                        compData = self.compareWithSpica(nShiftOp, self.spicaEve)
+                        if type(compData) is DataFrame:
+                            export = self.exportData(compData)
+                            if type(export) is bool:
+                                return True
+                            else:
+                                return export
+                        else:
+                            return compData
+                    else:
+                        sfil = [self.nSh_In[0], self.nSh_Out[0]]
+                        nfil = [self.nSh_In[3], self.nSh_Out[2]]
+                        npostShift = self.postDataOperation(nShiftOp, sfil, nfil)
+                        export = self.exportData(npostShift)
+                        if type(export) is bool:
+                            return "Sucessfully Exported Without comparing SPICA"
+                        else:
+                            return export
                 else:
                     return nShiftOp
-            elif type == 'R':
+
+            elif types == 'R':
                 pass
             else:
                 return "Type not available"
@@ -55,13 +77,7 @@ class ShiftChanges:
             sam = data.query("SDiff > '-01:00:00' and SDiff < '01:00:00'")
             data.drop(sam.index, inplace=True)
             data.sort_values([self.aCol[1], self.aCol[0]], inplace=True)
-            # lines to be added after perfroming from spica
-            #sfil = [self.nSh_In[0], self.nSh_Out[0]]
-            #self.exc1 = data.query(f"(Diff_In > '01:00:00' and Diff_In <= '06:00:00') and {self.aCol[4]} in {sfil}")
-            #data.drop(self.exc1.index, inplace=True)
-            #nfil = [self.nSh_In[3], self.nSh_Out[2]]
-            #self.exc2 = data.query(f"(Diff_In > '01:00:00' and Diff_In < '03:00:00') and {self.aCol[4]} in {nfil}")
-            #data.drop(self.exc2.index, inplace=True)
+
             return data
 
         except Exception as e:
@@ -70,15 +86,15 @@ class ShiftChanges:
 
     def compareWithSpica(self, sap, spica):
         try:
-            sap = sap[[self.aCol[1], self.aCol[0], self.aCol[2], self.aCol[3], self.aCol[4], self.aCol[5], self.aCol[6], self.aCol[7]]]
+            sap = sap[[self.aCol[1], self.aCol[0], self.aCol[2], self.aCol[3], self.aCol[4], self.aCol[5], self.aCol[6], self.aCol[7], sap.columns[8]]]
             sapspica = merge(sap, spica, left_on=[sap.columns[0], sap.columns[1]], right_on=[spica.columns[0], spica.columns[1]])
-            sapspica = sapspica[sapspica.duplicated([self.aCol[1], self.aCol[0]], keep=False)]
+            sapspica.loc[:,:] = sapspica.loc[sapspica.duplicated([self.aCol[1], self.aCol[0]], keep=False), :]
             sapspica.drop([spica.columns[0], spica.columns[1]], axis=1, inplace=True)
             sapspica['Diff_In'] = to_datetime(sapspica[self.aCol[4]].astype('str')) - to_datetime(sapspica['Arrival'].astype('str'))
 
             self.twoshifts = sapspica.query(f"((Diff_In >= '-01:00:00') and (Diff_In <= '01:00:00')) and ({self.aCol[4]} in {self.nSh_In} and {self.aCol[5]} in {self.nSh_Out})")
             for row, col in self.twoshifts.iterrows():
-                sap.drop(sap[(sap[self.aCol[1]] == col[self.aCol[1]]) & (sap[self.aCol[0]] == col[self.aCol[0]])].index, inplace=True)
+                sap.drop(sap.loc[(sap[self.aCol[1]] == col[self.aCol[1]]) & (sap[self.aCol[0]] == col[self.aCol[0]]), :].index, inplace=True)
 
             sfil = [self.nSh_In[0], self.nSh_Out[0]]
             self.twoshifts1 = sapspica.query(f"(Diff_In > '01:00:00' and Diff_In <= '06:00:00') and {self.aCol[4]} in {sfil}")
@@ -90,9 +106,24 @@ class ShiftChanges:
             for row, col in self.twoshifts2.iterrows():
                 sap.drop(sap[(sap[self.aCol[1]] == col[self.aCol[1]]) & (sap[self.aCol[0]] == col[self.aCol[0]])].index, inplace=True)
 
-
+            return self.postDataOperation(sap, sfil, nfil)
         except Exception as e:
             return f"Error when merging sap & spica datas \n {e}"
+
+    def postDataOperation(self, sap, sfil, nfil):
+        self.exc1 = sap.query(f"(Diff_In > '01:00:00' and Diff_In <= '06:00:00') and {self.aCol[4]} in {sfil}")
+        sap.drop(self.exc1.index, inplace=True)
+
+        self.exc2 = sap.query(f"(Diff_In > '01:00:00' and Diff_In < '03:00:00') and {self.aCol[4]} in {nfil}")
+        sap.drop(self.exc2.index, inplace=True)
+
+        sap[self.aCol[0]] = sap[self.aCol[0]].dt.date
+        sap[self.aCol[4]] = sap[self.aCol[4]].dt.time
+        sap[self.aCol[5]] = sap[self.aCol[5]].dt.time
+        sap[self.aCol[6]] = sap[self.aCol[6]].dt.time
+        sap[self.aCol[7]] = sap[self.aCol[7]].dt.time
+        print(sap.shape)
+        return sap
 
     def loadProperties(self):
         self.fData = self.conn.readFile(self.sFilePath)
@@ -126,10 +157,8 @@ class ShiftChanges:
             sec = list(data[self.aCol[3]].drop_duplicates())  # remove duplicates from the list
             rdFile = join(dirname(self.sorFile), "Shift Changes " + str(data[self.aCol[0]].min().day) + " to " + str(data[self.aCol[0]].max().day))
             typ = self.getExportType(self.cSec, sec)
-            if exists(rdFile):
-                shutil.rmtree(rdFile)
-            else:
-                mkdir(rdFile)
+            if exists(rdFile): shutil.rmtree(rdFile)
+            mkdir(rdFile)
 
             if typ:
                 a = self.getAsDict(self.cSec)
@@ -153,6 +182,15 @@ class ShiftChanges:
                     wri.sheets[i].column_dimensions['C'].width = len(max(list(edata[self.aCol[2]]), key=len))
                     wri.sheets[i].column_dimensions['D'].width = len(i)
                     wri.save()
+
+            other = ExcelWriter(join(rdFile, "Others.xlsx"))
+            if type(self.spicaEve) is DataFrame:
+                if not self.twoshifts.empty: self.twoshifts.to_excel(other, sheet_name="Two Shifts", columns=self.aCol, index=False)
+                if not self.twoshifts1.empty: self.twoshifts1.to_excel(other, sheet_name="Two Shifts 1", columns=self.aCol, index=False)
+                if not self.twoshifts2.empty: self.twoshifts2.to_excel(other, sheet_name="Two Shifts", columns=self.aCol, index=False)
+            if not self.exc1.empty: self.exc1.to_excel(other, sheet_name="Check 1", columns=self.aCol, index=False)
+            if not self.exc2.empty: self.exc2.to_excel(other, sheet_name="Check 2", columns=self.aCol, index=False)
+            other.save()
 
             return True
 
@@ -189,5 +227,10 @@ class ShiftChanges:
                 lst.append(j)
         return lst
 
+
 sChanges = ShiftChanges()
-print(sChanges.performNormalShiftOperation())
+result = sChanges.findShiftChanges()
+if type(result) is bool:
+    print("Sucessfully Exported")
+else:
+    print(result)
