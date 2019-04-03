@@ -101,8 +101,11 @@ class DataFetch:
         start = f"'{start.day}/{start.month}/{start.year}'"
         end = end + timedelta(days=2)
         end = f"'{end.day}/{end.month}/{end.year}'"
-        query = query.replace("''", start, 1)
-        query = query.replace("''", end, 1)
+        try:
+            query = query.replace("''", start, 1)
+            query = query.replace("''", end, 1)
+        except Exception as e:
+            return False
         return query
 
     def getEventQuery(self, qType):
@@ -180,7 +183,7 @@ class DataFetch:
 
 
 #dataFetch = DataFetch()
-#result = dataFetch.exportAllDB(date(2019,3,28), date(2019,3,30))
+#result = dataFetch.exportAllDB(date(2019,3,15), date(2019,4,2))
 #if type(result) is bool:
 #    print("Sucessfully Exported")
 #else:

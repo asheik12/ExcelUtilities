@@ -61,6 +61,17 @@ class SpicaEvents:
         else:
             return self.data
 
+    def getIncorrectPunches(self, start, end):
+        self.data = self.dataFetch.fetchAllDB(start, end)
+        if type(self.data) is DataFrame:
+            lcol = self.loadColumnsNames()
+            if type(lcol) is bool:
+                pass
+            else:
+                return lcol
+        else:
+            return self.data
+
     def loadColumnsNames(self):
         try:
             self.query = self.dataFetch.queries
