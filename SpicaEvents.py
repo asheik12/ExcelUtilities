@@ -1,6 +1,7 @@
 from DataFetch import DataFetch
 from pandas import DataFrame, to_datetime, DateOffset
 from datetime import time, datetime, date
+from os.path import join
 
 
 
@@ -66,11 +67,100 @@ class SpicaEvents:
         if type(self.data) is DataFrame:
             lcol = self.loadColumnsNames()
             if type(lcol) is bool:
-                pass
+                try:
+                    self.data.insert(3, self.time, self.data[self.date].dt.time)
+                    self.data[self.date] = self.data[self.date].dt.date
+                    self.data.sort_values([self.code, self.date], inplace=True)
+                    self.data.query(f"({self.event} == 268436546) or ({self.event} == 268436547) or ({self.event} == 1090) or ({self.event} == 1091)", inplace=True)
+                    mask = (self.data[self.time] < time(6, 10, 0)) & (self.data[self.status] == self.dep)
+                    self.data.loc[mask, self.date] = to_datetime(self.data[self.date] - DateOffset(days=1)).dt.date
+                    self.data = self.data[(self.data[self.date] != (start - DateOffset(days=1)).date()) & (self.data[self.date] != (end + DateOffset(days=1)).date())]
+
+                    # Filtering punches starts
+                    self.data = self.data.pivot_table(values=self.time, index=[self.code, self.date], columns=self.status, aggfunc=lambda x: " ".join(str(i) for i in x))
+                    self.data.reset_index(inplace=True)
+                    self.data.fillna(" ", inplace=True)
+
+                    def checkForNoValue(x):
+                        if x != " ":
+                            return int(len(str(x).split(" ")))
+                        else:
+                            return int(0)
+                    self.data[self.arr+self.count] = self.data[self.arr].apply(checkForNoValue)
+                    self.data[self.dep+self.count] = self.data[self.dep].apply(checkForNoValue)
+                    self.data = self.data[(self.data[self.arr+self.count] != 1) | (self.data[self.dep+self.count] != 1)]
+                    return self.data
+                except Exception as e:
+                    return f"Error While performing operation \n {e}"
             else:
                 return lcol
         else:
             return self.data
+
+    def getMultiplePunches(self, df):
+        try:
+            return df.query(f"({self.arr + self.count} != 0 and {self.dep + self.count} != 0) and ({self.arr + self.count} != 2 or {self.dep + self.count} !=2)")
+        except Exception as e:
+            return f"Error while finding multiple punches \n {e}"
+
+    def getSamePunches(self, df):
+        try:
+            return df.query(f"({self.arr + self.count} == 0 or {self.dep + self.count} == 0) and ({self.arr + self.count} > 1 or {self.dep + self.count}  > 1)")
+        except Exception as e:
+            return f"Error while finding same punches \n {e}"
+
+    def getSinglePunches(self, df):
+        try:
+            return df.query(f"({self.arr + self.count} == 0 or {self.dep + self.count} == 0) and ({self.arr + self.count} == 1 or {self.dep + self.count}  == 1)")
+        except Exception as e:
+            return f"Error while finding single punches \n {e}"
+
+    def exportIncorrectPunches(self, start, end):
+        inpun = self.getIncorrectPunches(start, end)
+        if type(inpun) is DataFrame:
+            mulpun = self.getMultiplePunches(inpun)
+            sampun = self.getSamePunches(inpun)
+            sinpun = self.getSinglePunches(inpun)
+            if (type(mulpun) is DataFrame) and (type(sampun) is DataFrame) and (type(sinpun) is DataFrame):
+                try:
+                    colName = f"{'{:^12}'.format(self.date)} | {'{:^6}'.format(self.code)} | {'{:^3}'.format(self.arr[:1] + self.count[1:2])} | {'{:^3}'.format(self.dep[:1] + self.count[1:2])} | {'{:^17}'.format(self.arr)} | {'{:^17}'.format(self.dep)}\n"
+                    fpunch = open(join(self.dataFetch.con.getDefaultPath(), "Punches.txt"), 'w')
+                    if not mulpun.empty:
+                        fpunch.write("Multiple Punches \n")
+                        fpunch.write(colName)
+                        fpunch.write('-' * len(colName) + "\n")
+                        for i, k in mulpun.iterrows():
+                            fpunch.write(f"{'{:^12}'.format(str(k[self.date]))} | {'{:^6}'.format(k[self.code])} | {'{:^3}'.format(k[self.arr + self.count])} | {'{:^3}'.format(k[self.dep + self.count])} | {'{:^17}'.format(k[self.arr])} | {'{:^17}'.format(k[self.dep])} \n")
+                        fpunch.write("\n")
+                    if not sampun.empty:
+                        fpunch.write("Same Punches \n")
+                        fpunch.write(colName)
+                        fpunch.write('-' * len(colName) + "\n")
+                        for i, k in sampun.iterrows():
+                            fpunch.write(f"{'{:^12}'.format(str(k[self.date]))} | {'{:^6}'.format(k[self.code])} | {'{:^3}'.format(k[self.arr + self.count])} | {'{:^3}'.format(k[self.dep + self.count])} | {'{:^17}'.format(k[self.arr])} | {'{:^17}'.format(k[self.dep])} \n")
+                        fpunch.write("\n")
+                    if not sinpun.empty:
+                        fpunch.write("Single Punches \n")
+                        fpunch.write(colName)
+                        fpunch.write('-' * len(colName) + "\n")
+                        for i, k in sinpun.iterrows():
+                            fpunch.write(f"{'{:^12}'.format(str(k[self.date]))} | {'{:^6}'.format(k[self.code])} | {'{:^3}'.format(k[self.arr + self.count])} | {'{:^3}'.format(k[self.dep + self.count])} | {'{:^17}'.format(k[self.arr])} | {'{:^17}'.format(k[self.dep])} \n")
+                        fpunch.write("\n")
+
+                    fpunch.close()
+                    return True
+                except Exception as e:
+                    return f"Error exporting file \n {e}"
+            else:
+                return "Error calculating punches multiple or same or single"
+        else:
+            return inpun
+
+    def checkForNoValue(self, x):
+        if x != " ":
+            return int(len(str(x).split(" ")))
+        else:
+            return int(0)
 
     def loadColumnsNames(self):
         try:
@@ -90,9 +180,18 @@ class SpicaEvents:
                         self.time = 'TIME'
                         self.arr = 'Arrival'
                         self.dep = 'Departure'
+                        self.count = '_Count'
                     else:
                         return "Problem loading columns names"
             return True
         except Exception as e:
             return f"Error while loading columns \n {e}"
 
+
+
+#spiEve = SpicaEvents()
+#res = spiEve.exportIncorrectPunches(date(2019,3,15), date(2019,4,3))
+#if type(res) is bool:
+#    print("Sucessfully Completed")
+#else:
+#   print(res)
