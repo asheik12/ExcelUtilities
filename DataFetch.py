@@ -41,9 +41,12 @@ class DataFetch:
     def preFetch(self, start, end):
         if (type(self.status) is bool) & (type(self.qstatus) is bool):
             if (type(start) is date) & (type(end) is date):
-                self.squery = self.getEventQuery(self.qType)
-                self.squery = self.updateQuery(start, end, self.squery)
-                if type(self.squery) is str:
+                queryType = self.getEventQuery(self.qType)
+                if not queryType is None:
+                    if self.qType == 'R':
+                        self.squery = self.updateDateQuery(start, end, queryType)
+                    else:
+                        self.squery = self.updateQuery(start, end, queryType)
                     return True
                 else:
                     return "Query type not found"
@@ -58,51 +61,91 @@ class DataFetch:
 
     def exportAllDB(self, start, end, qType='A', expPath=None):
         self.qType = qType
-        if expPath == None:
-            expPath = dirname(self.dFilePath)
-        elif exists(expPath):
-            if (not isdir(expPath)):
-                expPath = dirname(expPath)
-        else:
-            expPath = dirname(self.dFilePath)
+        expPath = self.exportPath(expPath)
         fetResult = self.preFetch(start, end)
         if type(fetResult) is bool:
             conmsg = self.connectToDatabase(cType=False)
             if type(conmsg) is bool:
-                try:
-                    self.cur.execute(self.squery)
-                    columnNames = [i[0] for i in self.cur.description]
-                    try:
-                        exportFile = open(join(expPath, "databases.csv"), 'w')
-                        exportFile.write(",".join(columnNames)+"\n")
-                        for datas in self.cur:
-                            insertrow = ""
-                            for coun in range(len(columnNames)):
-                                if coun == 0:
-                                    insertrow += datas[coun]
-                                else:
-                                    insertrow += f",{datas[coun]}"
-                            insertrow += "\n"
-                            exportFile.write(insertrow)
-                        exportFile.close()
-                        return True
-                    except Exception as e:
-                        return f"Error while creating export file \n {e}"
-                except Exception as e:
-                    return f"Problem executing query \n {e}"
-                finally:
-                    self.closeDBParams()
+                resExport = self.exportToFile(expPath)
+                if type(resExport) is bool:
+                    return True
+                else:
+                    return resExport
             else:
                 return conmsg
         else:
             return fetResult
 
-    def updateQuery(self,start,end,query):
+    def exportOffDB(self, start, end, qType='R', expPath=None):
+        self.qType = qType
+        expPath = self.exportPath(expPath)
+        fetResult = self.preFetch(start, end)
+        if type(fetResult) is bool:
+            conmsg = self.connectToDatabase(cType=False)
+            if type(conmsg) is bool:
+                resExport = self.exportToFile(expPath)
+                if type(resExport) is bool:
+                    return True
+                else:
+                    return resExport
+            else:
+                return conmsg
+        else:
+            return fetResult
+
+    def exportPath(self, ePath):
+        if ePath == None:
+            expPath = dirname(self.dFilePath)
+        elif exists(ePath):
+            if (not isdir(ePath)):
+                expPath = dirname(ePath)
+        else:
+            expPath = dirname(self.dFilePath)
+        return expPath
+
+    def exportToFile(self, ePath):
+        try:
+            self.cur.execute(self.squery)
+            columnNames = [i[0] for i in self.cur.description]
+            try:
+                exportFile = open(join(ePath, "databases.csv"), 'w')
+                exportFile.write(",".join(columnNames) + "\n")
+                for datas in self.cur:
+                    insertrow = ""
+                    for coun in range(len(columnNames)):
+                        if coun == 0:
+                            insertrow += datas[coun]
+                        else:
+                            insertrow += f",{datas[coun]}"
+                    insertrow += "\n"
+                    exportFile.write(insertrow)
+                exportFile.close()
+                return True
+            except Exception as e:
+                return f"Error while creating export file \n {e}"
+        except Exception as e:
+            return f"Problem executing query \n {e}"
+        finally:
+            self.closeDBParams()
+
+    def updateQuery(self, start, end, query):
         start = f"'{start.day}/{start.month}/{start.year}'"
         end = end + timedelta(days=2)
         end = f"'{end.day}/{end.month}/{end.year}'"
         try:
             query = query.replace("''", start, 1)
+            query = query.replace("''", end, 1)
+        except Exception as e:
+            return False
+        return query
+
+    def updateDateQuery(self, start, end, query):
+        start = f"'{start.day}/{start.month}/{start.year}'"
+        end = f"'{end.day}/{end.month}/{end.year}'"
+        try:
+            for i in range(2):
+                query = query.replace("''", start, 1)
+                query = query.replace("''", end, 1)
             query = query.replace("''", end, 1)
         except Exception as e:
             return False
@@ -183,7 +226,7 @@ class DataFetch:
 
 
 #dataFetch = DataFetch()
-#result = dataFetch.exportAllDB(date(2019,3,15), date(2019,4,3))
+#result = dataFetch.exportAllDB(date(2019,3,15), date(2019,3,31))
 #if type(result) is bool:
 #    print("Sucessfully Exported")
 #else:
