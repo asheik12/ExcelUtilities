@@ -106,6 +106,7 @@ class DataFetch:
     def exportToFile(self, ePath):
         try:
             self.cur.execute(self.squery)
+            print(self.squery)
             columnNames = [i[0] for i in self.cur.description]
             try:
                 exportFile = open(join(ePath, "databases.csv"), 'w')
@@ -113,10 +114,14 @@ class DataFetch:
                 for datas in self.cur:
                     insertrow = ""
                     for coun in range(len(columnNames)):
+                        fetData = datas[coun]
                         if coun == 0:
-                            insertrow += datas[coun]
+                            insertrow += str(fetData)
                         else:
-                            insertrow += f",{datas[coun]}"
+                            if (',' in str(fetData)) & (fetData != None):
+                                insertrow += f",{fetData.replace(',',';')}"
+                            else:
+                                insertrow += f",{str(fetData)}"
                     insertrow += "\n"
                     exportFile.write(insertrow)
                 exportFile.close()
@@ -143,10 +148,8 @@ class DataFetch:
         start = f"'{start.day}/{start.month}/{start.year}'"
         end = f"'{end.day}/{end.month}/{end.year}'"
         try:
-            for i in range(2):
-                query = query.replace("''", start, 1)
-                query = query.replace("''", end, 1)
             query = query.replace("''", end, 1)
+            query = query.replace("''", start, 1)
         except Exception as e:
             return False
         return query
@@ -226,7 +229,8 @@ class DataFetch:
 
 
 #dataFetch = DataFetch()
-#result = dataFetch.exportAllDB(date(2019,3,15), date(2019,3,31))
+#result = dataFetch.exportAllDB(date(2019,8,15), date(2019,9,15), qType='A')
+#result = dataFetch.exportOffDB(date(2019,3,13), date(2019,3,31))
 #if type(result) is bool:
 #    print("Sucessfully Exported")
 #else:

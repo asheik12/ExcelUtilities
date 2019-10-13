@@ -189,9 +189,9 @@ class SpicaEvents:
 
 
 
-#spiEve = SpicaEvents()
-#res = spiEve.exportIncorrectPunches(date(2019,3,15), date(2019,4,6))
-#if type(res) is bool:
+# spiEve = SpicaEvents()
+# res = spiEve.exportIncorrectPunches(date(2019,10,1), date(2019,10,12))
+# if type(res) is bool:
 #    print("Sucessfully Completed")
-#else:
-#   print(res)
+# else:
+#    print(res)

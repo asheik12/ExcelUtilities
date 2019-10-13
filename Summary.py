@@ -212,3 +212,13 @@ class Summary:
 
     def getDefaultPath(self):
         return join(environ['USERPROFILE'], "Desktop")
+
+
+
+
+sum = Summary()
+res = sum.calculateSummary()
+if type(res) is bool:
+    print("Sucessfully Finished")
+else:
+    print("Failed with "+ res)

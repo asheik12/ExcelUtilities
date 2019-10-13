@@ -100,10 +100,11 @@ class OTStat:
 
     def exportAsFile(self):
         try:
-            print(join(dirname(self.sorPath),f"OT_{datetime.now().month}_{datetime.now().year}.xlsx"))
+            #print(join(dirname(self.sorPath),f"OT_{datetime.now().month}_{datetime.now().year}.xlsx"))
             with ExcelWriter(join(dirname(self.sorPath),f"OT_{datetime.now().month}_{datetime.now().year}.xlsx")) as writer:
                 self.data2.to_excel(writer, sheet_name='OT_Summary')
                 self.data.to_excel(writer, sheet_name='OT', index=False)
+            return True
         except Exception as e:
             return f"Error while exporting file \n {e}"
 
@@ -126,3 +127,10 @@ class OTStat:
     def getDefaultPath(self):
         return join(environ['USERPROFILE'], "Desktop")
 
+
+stat = OTStat("C:\\Users\\m.azad\\Desktop\\08_2019.xlsx")
+res = stat.startCalculations()
+if type(res) is bool:
+    print("Sucessfully Finished")
+else:
+    print(f"Failed with {res}")
