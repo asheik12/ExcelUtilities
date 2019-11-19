@@ -1,7 +1,7 @@
 from os import environ
 from os.path import join, exists, dirname
 from datetime import datetime
-from pandas import read_excel, DataFrame, ExcelWriter
+from pandas import read_excel, DataFrame, ExcelWriter, Series
 
 
 class OTStat:
@@ -49,6 +49,7 @@ class OTStat:
                     self.data.columns = self.lst_cols
                 else:
                     return "Column count loaded not matching with dataframe"
+                self.data_sec = list(Series(self.data.Section.unique()).dropna())    
                 self.data.dropna(subset=[self.lst_cols[0]], inplace=True)
                 return True
             except Exception as e:
@@ -62,10 +63,11 @@ class OTStat:
                 self.dFrame = self.data[self.data[self.lst_cols[0]].isin(i.split("-"))].copy()
                 self.data.drop(list(self.dFrame.index), inplace=True)
                 self.dFrame.drop_duplicates(self.lst_cols[1], False, inplace=True)
-                self.dFrame.loc[(list(self.dFrame.index)[-1]) + 1] = self.dFrame.loc[:, self.lst_cols[3]:].sum()
-                self.dFrame.loc[self.dFrame[self.lst_cols[0]].isnull(), :self.lst_cols[0]] = "&".join(list(self.dFrame[self.lst_cols[0]].drop_duplicates().dropna()))
-                self.dFrame.loc[self.dFrame[self.lst_cols[2]].isnull(), self.lst_cols[2]] = self.dFrame[self.lst_cols[1]].count()
-                self.data = self.data.append(self.dFrame, ignore_index=True)
+                if not self.dFrame.empty:
+                    self.dFrame.loc[(list(self.dFrame.index)[-1]) + 1] = self.dFrame.loc[:, self.lst_cols[3]:].sum()
+                    self.dFrame.loc[self.dFrame[self.lst_cols[0]].isnull(), :self.lst_cols[0]] = "&".join(list(self.dFrame[self.lst_cols[0]].drop_duplicates().dropna()))
+                    self.dFrame.loc[self.dFrame[self.lst_cols[2]].isnull(), self.lst_cols[2]] = self.dFrame[self.lst_cols[1]].count()
+                    self.data = self.data.append(self.dFrame, ignore_index=True)
             for j in list(self.data[self.lst_cols[0]].drop_duplicates()):
                 if not self.data.loc[(self.data[self.lst_cols[0]] == j) & (self.data[self.lst_cols[2]].isnull()), :].empty:
                     self.data.loc[(self.data[self.lst_cols[0]] == j) & (self.data[self.lst_cols[2]].isnull()), self.lst_cols[2]] = self.data.loc[self.data[self.lst_cols[0]] == j, self.lst_cols[1]].count()
@@ -83,11 +85,20 @@ class OTStat:
             newCol = 'Count'
             self.data2.insert(0, newCol, "")
             for i in self.att_comb:
-                rowName = i.replace("-", "&")
-                self.data2.loc[rowName] = self.data2.loc[i.split("-")].sum()
-                self.data2.loc[i.replace("-", "&"), newCol] = data1.loc[self.data[self.lst_cols[0]].isin(i.split("-")), :][self.lst_cols[1]].count()
-                self.data2.drop(i.split("-"), inplace=True)
-            self.data2 = self.data2.reindex(self.att_sec, axis=0)
+                rowName = ""
+                for j in i.split("-"):
+                    if j in self.data_sec:
+                        if rowName != "":
+                            rowName = rowName + "-"
+                        rowName = rowName + j
+                if rowName != "":        
+                    rowChange = rowName.replace("-", "&")
+                    self.data2.loc[rowChange] = self.data2.loc[rowName.split("-")].sum()
+                    self.data2.loc[rowName.replace("-", "&"), newCol] = data1.loc[self.data[self.lst_cols[0]].isin(rowName.split("-")), :][self.lst_cols[1]].count()
+                    if len(rowName.split("-")) > 1:
+                        self.data2.drop(rowName.split("-"), inplace=True)
+            self.data_sec2 = list(Series(self.data2.index).dropna())        
+            self.data2 = self.data2.reindex(self.data_sec2, axis=0)
             self.data2.dropna(how='all', inplace=True)
             for k in list(self.data2.index):
                 if self.data2.loc[k, newCol] == "":
@@ -128,9 +139,9 @@ class OTStat:
         return join(environ['USERPROFILE'], "Desktop")
 
 
-stat = OTStat("C:\\Users\\m.azad\\Desktop\\08_2019.xlsx")
-res = stat.startCalculations()
-if type(res) is bool:
-    print("Sucessfully Finished")
-else:
-    print(f"Failed with {res}")
+# stat = OTStat("")
+# res = stat.startCalculations()
+# if type(res) is bool:
+#     print("Sucessfully Finished")
+# else:
+#     print(f"Failed with {res}")
