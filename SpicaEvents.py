@@ -31,8 +31,7 @@ class SpicaEvents:
                                 sel[self.date] = sel[self.date] - DateOffset(days=1)
                         return sel     
                     self.data = self.data.apply(func1, axis=1)
-                    self.data[self.date] = self.data[self.date].dt.date 
-                    self.data = self.data[self.data[self.date] != (start - DateOffset(days=1)).date()]
+                    self.data = self.data[self.data[self.date] != (start - DateOffset(days=1))]
                     # self.data = self.data[self.data[self.date] != datetime(2019, 3, 14)]                     // Old Code  
                     # End - Updated Code on 22.07.2020
                     self.dup = self.data[self.data[[self.code, self.date, self.status]].duplicated()]
@@ -211,7 +210,7 @@ class SpicaEvents:
 
 
 # spiEve = SpicaEvents()
-# res = spiEve.exportIncorrectPunches(date(2020,6,1), date(2020,6,30))
+# res = spiEve.exportIncorrectPunches(date(2020,7,15), date(2020,7,17))
 # if type(res) is bool:
 #    print("Sucessfully Completed")
 # else:
