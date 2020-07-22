@@ -21,9 +21,20 @@ class SpicaEvents:
                     self.data['TIME'] = to_datetime(self.data[self.date]).dt.time
                     self.data[self.date] = to_datetime(to_datetime(self.data[self.date]).dt.date)
                     self.data.drop_duplicates(keep='last', inplace=True)
-                    mask = (self.data[self.time] < time(6, 10, 0)) & (self.data[self.status] == self.dep)
-                    self.data.loc[mask, self.date] = self.data[self.date] - DateOffset(days=1)
-                    self.data = self.data[self.data[self.date] != datetime(2019, 3, 14)]
+                    # Start - Updated Code on 22.07.2020
+                    # mask = (self.data[self.time] < time(6, 10, 0)) & (self.data[self.status] == self.dep)  // Old Working Code
+                    # self.data.loc[mask, self.date] = self.data[self.date] - DateOffset(days=1)             // Old Working Code   
+                    def func1(sel):
+                        if ((sel[self.time] < time(6,10,0)) & (sel[self.status] == self.dep)):
+                            dval = self.data[(self.data[self.date] == sel[self.date]) & (self.data[self.code] == sel[self.code])]
+                            if dval[(dval[self.status] == self.arr) & (dval[self.time] <= sel[self.time])].empty:
+                                sel[self.date] = sel[self.date] - DateOffset(days=1)
+                        return sel     
+                    self.data = self.data.apply(func1, axis=1)
+                    self.data[self.date] = self.data[self.date].dt.date 
+                    self.data = self.data[self.data[self.date] != (start - DateOffset(days=1)).date()]
+                    # self.data = self.data[self.data[self.date] != datetime(2019, 3, 14)]                     // Old Code  
+                    # End - Updated Code on 22.07.2020
                     self.dup = self.data[self.data[[self.code, self.date, self.status]].duplicated()]
 
                     for i, col in (self.dup[~self.dup[[self.code, self.date]].duplicated(keep=False)]).iterrows():
@@ -72,10 +83,20 @@ class SpicaEvents:
                     self.data[self.date] = self.data[self.date].dt.date
                     self.data.sort_values([self.code, self.date], inplace=True)
                     self.data.query(f"({self.event} == 268436546) or ({self.event} == 268436547) or ({self.event} == 1090) or ({self.event} == 1091)", inplace=True)
-                    mask = (self.data[self.time] < time(6, 10, 0)) & (self.data[self.status] == self.dep)
-                    self.data.loc[mask, self.date] = to_datetime(self.data[self.date] - DateOffset(days=1)).dt.date
+                    # Start - Updated Code on 22.07.2020
+                    # mask = (self.data[self.time] < time(6, 10, 0)) & (self.data[self.status] == self.dep)             // Old Working Code
+                    # self.data.loc[mask, self.date] = to_datetime(self.data[self.date] - DateOffset(days=1)).dt.date   // Old Working Code
+                    def func1(sel):
+                        if ((sel[self.time] < time(6,10,0)) & (sel[self.status] == self.dep)):
+                            dval = self.data[(self.data[self.date] == sel[self.date]) & (self.data[self.code] == sel[self.code])]
+                            if dval[(dval[self.status] == self.arr) & (dval[self.time] <= sel[self.time])].empty:
+                                sel[self.date] = sel[self.date] - DateOffset(days=1)
+                        return sel     
+                    self.data = self.data.apply(func1, axis=1)
+                    self.data[self.date] = self.data[self.date].dt.date
+                    # End - Updated Code on 22.07.2020
                     self.data = self.data[(self.data[self.date] != (start - DateOffset(days=1)).date()) & (self.data[self.date] != (end + DateOffset(days=1)).date())]
-
+                    
                     # Filtering punches starts
                     self.data = self.data.pivot_table(values=self.time, index=[self.code, self.date], columns=self.status, aggfunc=lambda x: " ".join(str(i) for i in x))
                     self.data.reset_index(inplace=True)
@@ -190,7 +211,7 @@ class SpicaEvents:
 
 
 # spiEve = SpicaEvents()
-# res = spiEve.exportIncorrectPunches(date(2019,10,1), date(2019,10,12))
+# res = spiEve.exportIncorrectPunches(date(2020,6,1), date(2020,6,30))
 # if type(res) is bool:
 #    print("Sucessfully Completed")
 # else:
